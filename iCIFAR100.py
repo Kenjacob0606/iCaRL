@@ -21,8 +21,9 @@ class iCIFAR100(CIFAR100):
         self.test_transform = test_transform
         self.TrainData = []
         self.TrainLabels = []
-        self.TestData = []
-        self.TestLabels = []
+        # self.TestData = []
+        self.TestData = None
+        self.TestLabels = None
 
     def concatenate(self, datas, labels):
         con_data = datas[0]
@@ -39,10 +40,10 @@ class iCIFAR100(CIFAR100):
             datas.append(data)
             labels.append(np.full((data.shape[0]), label))
         datas, labels = self.concatenate(datas, labels)
-        self.TestData = datas if self.TestData == [] else np.concatenate(
+        self.TestData = datas if self.TestData is None else np.concatenate(
             (self.TestData, datas), axis=0)
-        self.TestLabels = labels if self.TestLabels == [
-        ] else np.concatenate((self.TestLabels, labels), axis=0)
+        self.TestLabels = labels if self.TestLabels is None else np.concatenate(
+            (self.TestLabels, labels), axis=0)
         print("the size of test set is %s" % (str(self.TestData.shape)))
         print("the size of test label is %s" % str(self.TestLabels.shape))
 
