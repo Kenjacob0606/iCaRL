@@ -9,7 +9,9 @@ from myNetwork import network
 from iCIFAR100 import iCIFAR100
 from torch.utils.data import DataLoader
 
-device = torch.device("cuda:2" if torch.cuda.is_available() else "cpu")
+device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
+print("using device:", device)
+
 
 def get_one_hot(target,num_class):
     one_hot=torch.zeros(target.shape[0],num_class).to(device)
@@ -100,6 +102,7 @@ class iCaRLmodel:
     def train(self):
         accuracy = 0
         opt = optim.SGD(self.model.parameters(), lr=self.learning_rate, weight_decay=0.00001)
+        # modify learning rate for first task during epoch 48 and 80 and for any incremental task during epoch 62 only
         for epoch in range(self.epochs):
             if epoch == 48:
                 if self.numclass==self.task_size:
@@ -131,14 +134,16 @@ class iCaRLmodel:
                 #output = self.model(images)
                 loss_value = self._compute_loss(indexs, images, target)
                 opt.zero_grad()
-                loss_value.backward()
-                opt.step()
+                loss_value.backward()  # compute param gradients by backprop
+                opt.step()  # update parameters
                 print('epoch:%d,step:%d,loss:%.3f' % (epoch, step, loss_value.item()))
             accuracy = self._test(self.test_loader, 1)
             print('epoch:%d,accuracy:%.3f' % (epoch, accuracy))
+        print('Task complete')
         return accuracy
 
     def _test(self, testloader, mode):
+        # task = 0  # new
         if mode==0:
             print("compute NMS")
         self.model.eval()
@@ -151,6 +156,7 @@ class iCaRLmodel:
             correct += (predicts.cpu() == labels.cpu()).sum()
             total += len(labels)
         accuracy = 100 * correct / total
+        # task += 1  # new
         self.model.train()
         return accuracy
 
@@ -183,9 +189,9 @@ class iCaRLmodel:
         self.model.train()
         KNN_accuracy=self._test(self.test_loader,0)
         print("NMS accuracy："+str(KNN_accuracy.item()))
-        filename='model/accuracy:%.3f_KNN_accuracy:%.3f_increment:%d_net.pkl' % (accuracy, KNN_accuracy, i + 10)
+        filename = 'model/accuracy-%.3f_KNN_accuracy-%.3f_increment-%d_net.pkl' % (accuracy, KNN_accuracy, i + 10)  # changed : to -
         torch.save(self.model,filename)
-        self.old_model=torch.load(filename)
+        self.old_model = torch.load(filename, weights_only=False)        # added weights_only parameter
         self.old_model.to(device)
         self.old_model.eval()
         
