@@ -7,6 +7,7 @@ from PIL import Image
 import torch.optim as optim
 from myNetwork import network
 from iCIFAR100 import iCIFAR100
+from iDataset import iDataset
 from torch.utils.data import DataLoader
 
 device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
@@ -50,8 +51,10 @@ class iCaRLmodel:
                                                     transforms.ToTensor(),
                                                    transforms.Normalize((0.5071, 0.4867, 0.4408), (0.2675, 0.2565, 0.2761))])
         
-        self.train_dataset = iCIFAR100('dataset', transform=self.train_transform, download=True)
-        self.test_dataset = iCIFAR100('dataset', test_transform=self.test_transform, train=False, download=True)
+        # self.train_dataset = iCIFAR100('dataset', transform=self.train_transform, download=True)
+        # self.test_dataset = iCIFAR100('dataset', test_transform=self.test_transform, train=False, download=True)
+        self.train_dataset = iDataset('dataset', transform=self.train_transform, download=True)
+        self.test_dataset = iDataset('dataset', test_transform=self.test_transform, train=False, download=True)
 
         self.batchsize = batch_size
         self.memory_size=memory_size
@@ -178,9 +181,9 @@ class iCaRLmodel:
     # change the size of examplar
     def afterTrain(self,accuracy):
         self.model.eval()
-        m=int(self.memory_size/self.numclass)
-        self._reduce_exemplar_sets(m)
-        for i in range(self.numclass-self.task_size,self.numclass):
+        m=int(self.memory_size/self.numclass) #compute exemplar size for each class
+        self._reduce_exemplar_sets(m) #exemplars per class decrease as more classes are added
+        for i in range(self.numclass-self.task_size,self.numclass): #loop over newly learned classes only
             print('construct class %s examplar:'%(i),end='')
             images=self.train_dataset.get_image_class(i)
             self._construct_exemplar_set(images,m)
@@ -230,7 +233,7 @@ class iCaRLmodel:
 
     def compute_class_mean(self, images, transform):
         x = self.Image_transform(images, transform).to(device)
-        feature_extractor_output = F.normalize(self.model.feature_extractor(x).detach()).cpu().numpy()
+        feature_extractor_output = F.normalize(self.model.feature_extractor(x).detach()).cpu().numpy() #extract features, detaach from graph, normalize to unit length, move to cpu and convert to numpy
         #feature_extractor_output = self.model.feature_extractor(x).detach().cpu().numpy()
         class_mean = np.mean(feature_extractor_output, axis=0)
         return class_mean, feature_extractor_output
