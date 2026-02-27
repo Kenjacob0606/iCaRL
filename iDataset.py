@@ -1,10 +1,15 @@
 from torchvision.datasets import CIFAR100
-from torchvision.datasets import MNIST
+from torchvision.datasets import CIFAR10
+from torchvision.datasets import MNIST #hand written digits
+from torchvision.datasets import FashionMNIST #fashion products
+from torchvision.datasets import SVHN #complex digits
+from torchvision.datasets import CelebA #celebrity faces
+from torchvision.datasets import ImageNet #natural images
 import numpy as np
 from PIL import Image
 
 
-class iCIFAR100(CIFAR100):
+class iDataset(CIFAR10):
     def __init__(self, root,
                  train=True,
                  transform=None,
@@ -12,7 +17,7 @@ class iCIFAR100(CIFAR100):
                  test_transform=None,
                  target_test_transform=None,
                  download=False):
-        super(iCIFAR100, self).__init__(root,
+        super(iDataset, self).__init__(root,
                                         train=train,
                                         transform=transform,
                                         target_transform=target_transform,
