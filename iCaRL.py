@@ -33,8 +33,10 @@ class iCaRLmodel:
         self.transform = transforms.Compose([#transforms.Resize(img_size),
                                              transforms.ToTensor(),
                                             transforms.Normalize((0.5071, 0.4867, 0.4408), (0.2675, 0.2565, 0.2761))])
-        self.old_model = None
+        
+        self.old_model = None #added to store the old model for distillation loss
 
+# data augmentation for training, testing and class mean computation
         self.train_transform = transforms.Compose([#transforms.Resize(img_size),
                                                   transforms.RandomCrop((32,32),padding=4),
                                                   transforms.RandomHorizontalFlip(p=0.5),
@@ -51,10 +53,10 @@ class iCaRLmodel:
                                                     transforms.ToTensor(),
                                                    transforms.Normalize((0.5071, 0.4867, 0.4408), (0.2675, 0.2565, 0.2761))])
         
-        # self.train_dataset = iCIFAR100('dataset', transform=self.train_transform, download=True)
-        # self.test_dataset = iCIFAR100('dataset', test_transform=self.test_transform, train=False, download=True)
-        self.train_dataset = iDataset('dataset', transform=self.train_transform, download=True)
-        self.test_dataset = iDataset('dataset', test_transform=self.test_transform, train=False, download=True)
+        self.train_dataset = iCIFAR100('dataset', transform=self.train_transform, download=True)
+        self.test_dataset = iCIFAR100('dataset', test_transform=self.test_transform, train=False, download=True)
+        # self.train_dataset = iDataset('dataset', transform=self.train_transform, download=True)
+        # self.test_dataset = iDataset('dataset', test_transform=self.test_transform, train=False, download=True)
 
         self.batchsize = batch_size
         self.memory_size=memory_size
@@ -67,10 +69,10 @@ class iCaRLmodel:
     # incremental
     def beforeTrain(self):
         self.model.eval()
-        classes=[self.numclass-self.task_size,self.numclass]
-        self.train_loader,self.test_loader=self._get_train_and_test_dataloader(classes)
+        classes=[self.numclass-self.task_size,self.numclass] #select classes for current task
+        self.train_loader,self.test_loader=self._get_train_and_test_dataloader(classes) #load data for current task
         if self.numclass>self.task_size:
-            self.model.Incremental_learning(self.numclass)
+            self.model.Incremental_learning(self.numclass)  #modify the output layer of the model to accommodate new classes
         self.model.train()
         self.model.to(device)
 
@@ -132,6 +134,7 @@ class iCaRLmodel:
                          p['lr'] =self.learning_rate/ 125
                      #opt = optim.SGD(self.model.parameters(), lr=self.learning_rate / 125,weight_decay=0.00001,momentum=0.9,nesterov=True,)
                   print("change learning rate:%.3f" % (self.learning_rate / 100))
+
             for step, (indexs, images, target) in enumerate(self.train_loader):
                 images, target = images.to(device), target.to(device)
                 #output = self.model(images)
@@ -172,6 +175,7 @@ class iCaRLmodel:
             return F.binary_cross_entropy_with_logits(output, target)
         else:
             #old_target = torch.tensor(np.array([self.old_model_output[index.item()] for index in indexs]))
+            ##Distillation loss
             old_target=torch.sigmoid(self.old_model(imgs))
             old_task_size = old_target.shape[1]
             target[..., :old_task_size] = old_target
@@ -203,7 +207,7 @@ class iCaRLmodel:
     def _construct_exemplar_set(self, images, m):
         class_mean, feature_extractor_output = self.compute_class_mean(images, self.transform)
         exemplar = []
-        now_class_mean = np.zeros((1, 512))
+        now_class_mean = np.zeros((1, 512)) #was 1,512 || 1, 2048
      
         for i in range(m):
             # shape：batch_size*512
