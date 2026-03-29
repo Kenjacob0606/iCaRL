@@ -11,6 +11,7 @@ from iDataset import iDataset
 from torch.utils.data import DataLoader
 
 device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
+# device = torch.device("cpu")
 print("using device:", device)
 
 
@@ -32,7 +33,8 @@ class iCaRLmodel:
         self.numclass = numclass
         self.transform = transforms.Compose([#transforms.Resize(img_size),
                                              transforms.ToTensor(),
-                                            transforms.Normalize((0.5071, 0.4867, 0.4408), (0.2675, 0.2565, 0.2761))])
+                                            transforms.Normalize((0.5071, 0.4867, 0.4408), (0.2675, 0.2565, 0.2761) #CIFAR10
+)]) 
         
         self.old_model = None #added to store the old model for distillation loss
 
@@ -42,20 +44,22 @@ class iCaRLmodel:
                                                   transforms.RandomHorizontalFlip(p=0.5),
                                                   transforms.ColorJitter(brightness=0.24705882352941178),
                                                   transforms.ToTensor(),
-                                                  transforms.Normalize((0.5071, 0.4867, 0.4408), (0.2675, 0.2565, 0.2761))])
+                                                  transforms.Normalize((0.5071, 0.4867, 0.4408), (0.2675, 0.2565, 0.2761))]) 
         
         self.test_transform = transforms.Compose([#transforms.Resize(img_size),
                                                    transforms.ToTensor(),
-                                                 transforms.Normalize((0.5071, 0.4867, 0.4408), (0.2675, 0.2565, 0.2761))])
+                                                 transforms.Normalize((0.5071, 0.4867, 0.4408), (0.2675, 0.2565, 0.2761)
+)])
         
         self.classify_transform=transforms.Compose([transforms.RandomHorizontalFlip(p=1.),
                                                     #transforms.Resize(img_size),
                                                     transforms.ToTensor(),
-                                                   transforms.Normalize((0.5071, 0.4867, 0.4408), (0.2675, 0.2565, 0.2761))])
+                                                   transforms.Normalize((0.5071, 0.4867, 0.4408), (0.2675, 0.2565, 0.2761)
+)])
         
         self.train_dataset = iCIFAR100('dataset', transform=self.train_transform, download=True)
         self.test_dataset = iCIFAR100('dataset', test_transform=self.test_transform, train=False, download=True)
-        # self.train_dataset = iDataset('dataset', transform=self.train_transform, download=True)
+        # self.train_dataset = iDataset('dataset', transform=self.train_transform, download=True)                       CIFAR10
         # self.test_dataset = iDataset('dataset', test_transform=self.test_transform, train=False, download=True)
 
         self.batchsize = batch_size
@@ -207,7 +211,7 @@ class iCaRLmodel:
     def _construct_exemplar_set(self, images, m):
         class_mean, feature_extractor_output = self.compute_class_mean(images, self.transform)
         exemplar = []
-        now_class_mean = np.zeros((1, 512)) #was 1,512 || 1, 2048
+        now_class_mean = np.zeros((1, 512)) #was 1,512 || 1, 2048       #MNIST
      
         for i in range(m):
             # shape：batch_size*512
@@ -216,7 +220,7 @@ class iCaRLmodel:
             x = np.linalg.norm(x, axis=1)
             index = np.argmin(x)
             now_class_mean += feature_extractor_output[index]
-            exemplar.append(images[index])
+            exemplar.append(images[index]) #newly edited
 
         print("the size of exemplar :%s" % (str(len(exemplar))))
         self.exemplar_set.append(exemplar)
